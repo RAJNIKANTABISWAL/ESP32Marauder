@@ -15,26 +15,56 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
         
-      - name: Install ESP32 Boards and Compile TestFile
+#      - name: Install ESP32 Boards and Compile TestFile
+#        uses: ArminJo/arduino-test-compile@v3.2.1
+#        with:
+#          sketch-names: TestFile.ino
+#          arduino-board-fqbn: esp32:esp32:esp32s2
+#          platform-url: https://github.com/espressif/arduino-esp32/releases/download/2.0.10/package_esp32_dev_index.json
+          
+      - name: Install Arduino CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
+          echo "/home/runner/work/ESP32Marauder/ESP32Marauder/bin" >> $GITHUB_PATH
+          export PATH=$PATH:/home/runner/work/ESP32Marauder/ESP32Marauder/bin
+          arduino-cli version
+
+      - name: Install Arduino-ESP32 Core v2.0.11
+        run: |
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32@2.0.11
+
+      - name: Verify Installed Cores
+        run: arduino-cli core list
+
+      - name: Build TestFile with ESP32 v2.0.11
         uses: ArminJo/arduino-test-compile@v3.2.1
         with:
           sketch-names: TestFile.ino
           arduino-board-fqbn: esp32:esp32:esp32s2
-          platform-url: https://github.com/espressif/arduino-esp32/releases/download/2.0.10/package_esp32_dev_index.json
-        
-      - name: Pull arduino-esp32 v2.0.4
-        uses: actions/checkout@v2
-        with:
-          repository: espressif/arduino-esp32
-          ref: 2.0.4
-          path: 2.0.4arduino-esp32
+          arduino-platform: esp32:esp32@2.0.11
+          platform-url: https://github.com/espressif/arduino-esp32/releases/download/2.0.11/package_esp32_dev_index.json
+
+      - name: Verify Installed Cores Again
+        run: arduino-cli core list
           
-      - name: Pull arduino-esp32 v2.0.10
-        uses: actions/checkout@v2
-        with:
-          repository: espressif/arduino-esp32
-          ref: 2.0.10
-          path: 2.0.10
+      - name: Show Arduino dir structure
+        run: |
+          find /home/runner/.arduino15/packages/esp32/hardware/
+        
+#      - name: Pull arduino-esp32 v2.0.4
+#        uses: actions/checkout@v2
+#        with:
+#          repository: espressif/arduino-esp32
+#          ref: 2.0.4
+#          path: 2.0.4arduino-esp32
+          
+#      - name: Pull arduino-esp32 v2.0.10
+#        uses: actions/checkout@v2
+#        with:
+#          repository: espressif/arduino-esp32
+#          ref: 2.0.10
+#          path: 2.0.10
           
       - name: Install AsyncTCP
         uses: actions/checkout@v2
@@ -82,7 +112,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: h2zero/NimBLE-Arduino
-          ref: 1.2.0
+          ref: 1.3.5
           path: CustomNimBLE-Arduino
 
       - name: Install Adafruit_NeoPixel
@@ -120,6 +150,20 @@ jobs:
           ref: 8.1.0
           path: CustomEspSoftwareSerial
           
+      - name: Install Adafruit_BusIO
+        uses: actions/checkout@v2
+        with:
+          repository: adafruit/Adafruit_BusIO
+          ref: 1.15.0
+          path: CustomAdafruit_BusIO
+          
+      - name: Install Adafruit_MAX1704X
+        uses: actions/checkout@v2
+        with:
+          repository: adafruit/Adafruit_MAX1704X
+          ref: 1.0.2
+          path: CustomAdafruit_MAX1704X
+          
       #- name: Search for SD lib in arduino-esp32 v2.0.4
       #  run: |
       #    find /home/runner/work/ESP32Marauder/ESP32Marauder/2.0.4arduino-esp32 -name "SD"
@@ -132,6 +176,7 @@ jobs:
           cp User_Setup_og_marauder.h CustomTFT_eSPI/
           cp User_Setup_marauder_m5stickc.h CustomTFT_eSPI/
           cp User_Setup_marauder_rev_feather.h CustomTFT_eSPI/
+          cp User_Setup_dual_nrf24.h CustomTFT_eSPI/
           pwd
           ls -la
           ls -la CustomTFT_eSPI
@@ -162,7 +207,6 @@ jobs:
           
       - name: Modify platform.txt
         run: |
-          echo "Chicken"
           for i in $(find /home/runner/.arduino15/packages/esp32/hardware/esp32/ -name "platform.txt"); do
             sed -i 's/compiler.c.elf.libs.esp32c3=/compiler.c.elf.libs.esp32c3=-zmuldefs /' "$i"
             sed -i 's/compiler.c.elf.libs.esp32s3=/compiler.c.elf.libs.esp32s3=-zmuldefs /' "$i"
@@ -182,6 +226,7 @@ jobs:
           sed -i 's/^  #define MARAUDER_V4/  \/\/#define MARAUDER_V4/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_V6/  \/\/#define MARAUDER_V6/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_V6_1/  \/\/#define MARAUDER_V6_1/' esp32_marauder/configs.h
+          sed -i 's/^  #define MARAUDER_V7/  \/\/#define MARAUDER_V7/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_KIT/  \/\/#define MARAUDER_KIT/' esp32_marauder/configs.h
           sed -i 's/^  #define GENERIC_ESP32/  \/\/#define GENERIC_ESP32/' esp32_marauder/configs.h
           sed -i 's/^  \/\/#define MARAUDER_FLIPPER/  #define MARAUDER_FLIPPER/' esp32_marauder/configs.h
@@ -194,6 +239,8 @@ jobs:
           sketch-names: esp32_marauder.ino
           arduino-board-fqbn: esp32:esp32:esp32s2:PartitionScheme=min_spiffs,FlashSize=4M,PSRAM=enabled
           extra-arduino-cli-args: "--warnings none"
+          arduino-platform: esp32:esp32@2.0.11
+          platform-url: https://github.com/espressif/arduino-esp32/releases/download/2.0.11/package_esp32_dev_index.json
           
       - name: Rename Marauder Flipper bin
         run: |
@@ -205,6 +252,8 @@ jobs:
           sketch-names: esp32_marauder.ino
           arduino-board-fqbn: esp32:esp32:esp32s3:PartitionScheme=min_spiffs,FlashSize=8M,PSRAM=enabled
           extra-arduino-cli-args: "--warnings none"
+          arduino-platform: esp32:esp32@2.0.11
+          platform-url: https://github.com/espressif/arduino-esp32/releases/download/2.0.11/package_esp32_dev_index.json
           
       - name: Rename Marauder Multi Board bin
         run: |
@@ -216,12 +265,15 @@ jobs:
           find /home/runner/ -name "*TFT_eSPI*"     
           sed -i 's/^#include <User_Setup_marauder_rev_feather.h>/\/\/#include <User_Setup_marauder_rev_feather.h>/' /home/runner/Arduino/libraries/CustomTFT_eSPI/User_Setup_Select.h          
           sed -i 's/^#include <User_Setup_marauder_mini.h>/\/\/#include <User_Setup_marauder_mini.h>/' /home/runner/Arduino/libraries/CustomTFT_eSPI/User_Setup_Select.h
+          sed -i 's/^#include <User_Setup_marauder_m5stickc.h>/\/\/#include <User_Setup_marauder_m5stickc.h>/' /home/runner/Arduino/libraries/CustomTFT_eSPI/User_Setup_Select.h
+          sed -i 's/^#include <User_Setup_dual_nrf24.h>/\/\/#include <User_Setup_dual_nrf24.h>/' /home/runner/Arduino/libraries/CustomTFT_eSPI/User_Setup_Select.h
           sed -i 's/^\/\/#include <User_Setup_og_marauder.h>/#include <User_Setup_og_marauder.h>/' /home/runner/Arduino/libraries/CustomTFT_eSPI/User_Setup_Select.h
           sed -i 's/^  #define MARAUDER_REV_FEATHER/  \/\/#define MARAUDER_REV_FEATHER/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_MINI/  \/\/#define MARAUDER_MINI/' esp32_marauder/configs.h
           sed -i 's/^  \/\/#define MARAUDER_V4/  #define MARAUDER_V4/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_V6/  \/\/#define MARAUDER_V6/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_V6_1/  \/\/#define MARAUDER_V6_1/' esp32_marauder/configs.h
+          sed -i 's/^  #define MARAUDER_V7/  \/\/#define MARAUDER_V7/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_KIT/  \/\/#define MARAUDER_KIT/' esp32_marauder/configs.h
           sed -i 's/^  #define GENERIC_ESP32/  \/\/#define GENERIC_ESP32/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_FLIPPER/  \/\/#define MARAUDER_FLIPPER/' esp32_marauder/configs.h
@@ -234,6 +286,8 @@ jobs:
           sketch-names: esp32_marauder.ino
           arduino-board-fqbn: esp32:esp32:d32:PartitionScheme=min_spiffs
           extra-arduino-cli-args: "--warnings none"
+          arduino-platform: esp32:esp32@2.0.11
+          platform-url: https://github.com/espressif/arduino-esp32/releases/download/2.0.11/package_esp32_dev_index.json
           
       - name: Rename OG Marauder bin
         run: |
@@ -243,12 +297,15 @@ jobs:
         run: |
           sed -i 's/^#include <User_Setup_marauder_rev_feather.h>/\/\/#include <User_Setup_marauder_rev_feather.h>/' /home/runner/Arduino/libraries/CustomTFT_eSPI/User_Setup_Select.h
           sed -i 's/^#include <User_Setup_marauder_mini.h>/\/\/#include <User_Setup_marauder_mini.h>/' /home/runner/Arduino/libraries/CustomTFT_eSPI/User_Setup_Select.h
+          sed -i 's/^#include <User_Setup_marauder_m5stickc.h>/\/\/#include <User_Setup_marauder_m5stickc.h>/' /home/runner/Arduino/libraries/CustomTFT_eSPI/User_Setup_Select.h
+          sed -i 's/^#include <User_Setup_dual_nrf24.h>/\/\/#include <User_Setup_dual_nrf24.h>/' /home/runner/Arduino/libraries/CustomTFT_eSPI/User_Setup_Select.h
           sed -i 's/^\/\/#include <User_Setup_og_marauder.h>/#include <User_Setup_og_marauder.h>/' /home/runner/Arduino/libraries/CustomTFT_eSPI/User_Setup_Select.h
           sed -i 's/^  #define MARAUDER_REV_FEATHER/  \/\/#define MARAUDER_REV_FEATHER/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_MINI/  \/\/#define MARAUDER_MINI/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_V4/  \/\/#define MARAUDER_V4/' esp32_marauder/configs.h
           sed -i 's/^  \/\/#define MARAUDER_V6/  #define MARAUDER_V6/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_V6_1/  \/\/#define MARAUDER_V6_1/' esp32_marauder/configs.h
+          sed -i 's/^  #define MARAUDER_V7/  \/\/#define MARAUDER_V7/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_KIT/  \/\/#define MARAUDER_KIT/' esp32_marauder/configs.h
           sed -i 's/^  #define GENERIC_ESP32/  \/\/#define GENERIC_ESP32/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_FLIPPER/  \/\/#define MARAUDER_FLIPPER/' esp32_marauder/configs.h
@@ -278,6 +335,8 @@ jobs:
           sketch-names: esp32_marauder.ino
           arduino-board-fqbn: esp32:esp32:d32:PartitionScheme=min_spiffs
           extra-arduino-cli-args: "--warnings none"
+          arduino-platform: esp32:esp32@2.0.11
+          platform-url: https://github.com/espressif/arduino-esp32/releases/download/2.0.11/package_esp32_dev_index.json
           
       - name: Rename v6 Marauder bin
         run: |
@@ -290,6 +349,7 @@ jobs:
           sed -i 's/^  #define MARAUDER_V4/  \/\/#define MARAUDER_V4/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_V6/  \/\/#define MARAUDER_V6/' esp32_marauder/configs.h
           sed -i 's/^  \/\/#define MARAUDER_V6_1/  #define MARAUDER_V6_1/' esp32_marauder/configs.h
+          sed -i 's/^  #define MARAUDER_V7/  \/\/#define MARAUDER_V7/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_KIT/  \/\/#define MARAUDER_KIT/' esp32_marauder/configs.h
           sed -i 's/^  #define GENERIC_ESP32/  \/\/#define GENERIC_ESP32/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_FLIPPER/  \/\/#define MARAUDER_FLIPPER/' esp32_marauder/configs.h
@@ -302,6 +362,8 @@ jobs:
           sketch-names: esp32_marauder.ino
           arduino-board-fqbn: esp32:esp32:d32:PartitionScheme=min_spiffs
           extra-arduino-cli-args: "--warnings none"
+          arduino-platform: esp32:esp32@2.0.11
+          platform-url: https://github.com/espressif/arduino-esp32/releases/download/2.0.11/package_esp32_dev_index.json
           
       - name: Rename v6 Marauder bin
         run: |
@@ -310,12 +372,15 @@ jobs:
       - name: Configure TFT_eSPI and configs.h for Marauder Kit
         run: |
           sed -i 's/^#include <User_Setup_marauder_mini.h>/\/\/#include <User_Setup_marauder_mini.h>/' /home/runner/Arduino/libraries/CustomTFT_eSPI/User_Setup_Select.h
+          sed -i 's/^#include <User_Setup_marauder_m5stickc.h>/\/\/#include <User_Setup_marauder_m5stickc.h>/' /home/runner/Arduino/libraries/CustomTFT_eSPI/User_Setup_Select.h
+          sed -i 's/^#include <User_Setup_dual_nrf24.h>/\/\/#include <User_Setup_dual_nrf24.h>/' /home/runner/Arduino/libraries/CustomTFT_eSPI/User_Setup_Select.h
           sed -i 's/^\/\/#include <User_Setup_og_marauder.h>/#include <User_Setup_og_marauder.h>/' /home/runner/Arduino/libraries/CustomTFT_eSPI/User_Setup_Select.h
           sed -i 's/^  #define MARAUDER_REV_FEATHER/  \/\/#define MARAUDER_REV_FEATHER/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_MINI/  \/\/#define MARAUDER_MINI/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_V4/  \/\/#define MARAUDER_V4/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_V6/  \/\/#define MARAUDER_V6/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_V6_1/  \/\/#define MARAUDER_V6_1/' esp32_marauder/configs.h
+          sed -i 's/^  #define MARAUDER_V7/  \/\/#define MARAUDER_V7/' esp32_marauder/configs.h
           sed -i 's/^  \/\/#define MARAUDER_KIT/  #define MARAUDER_KIT/' esp32_marauder/configs.h
           sed -i 's/^  #define GENERIC_ESP32/  \/\/#define GENERIC_ESP32/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_FLIPPER/  \/\/#define MARAUDER_FLIPPER/' esp32_marauder/configs.h
@@ -328,6 +393,8 @@ jobs:
           sketch-names: esp32_marauder.ino
           arduino-board-fqbn: esp32:esp32:d32:PartitionScheme=min_spiffs
           extra-arduino-cli-args: "--warnings none"
+          arduino-platform: esp32:esp32@2.0.11
+          platform-url: https://github.com/espressif/arduino-esp32/releases/download/2.0.11/package_esp32_dev_index.json
           
       - name: Rename Marauder Kit bin
         run: |
@@ -337,11 +404,14 @@ jobs:
         run: |
           sed -i 's/^\/\/#include <User_Setup_marauder_mini.h>/#include <User_Setup_marauder_mini.h>/' /home/runner/Arduino/libraries/CustomTFT_eSPI/User_Setup_Select.h
           sed -i 's/^#include <User_Setup_og_marauder.h>/\/\/#include <User_Setup_og_marauder.h>/' /home/runner/Arduino/libraries/CustomTFT_eSPI/User_Setup_Select.h
+          sed -i 's/^#include <User_Setup_marauder_m5stickc.h>/\/\/#include <User_Setup_marauder_m5stickc.h>/' /home/runner/Arduino/libraries/CustomTFT_eSPI/User_Setup_Select.h
+          sed -i 's/^#include <User_Setup_dual_nrf24.h>/\/\/#include <User_Setup_dual_nrf24.h>/' /home/runner/Arduino/libraries/CustomTFT_eSPI/User_Setup_Select.h
           sed -i 's/^  #define MARAUDER_REV_FEATHER/  \/\/#define MARAUDER_REV_FEATHER/' esp32_marauder/configs.h
           sed -i 's/^  \/\/#define MARAUDER_MINI/  #define MARAUDER_MINI/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_V4/  \/\/#define MARAUDER_V4/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_V6/  \/\/#define MARAUDER_V6/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_V6_1/  \/\/#define MARAUDER_V6_1/' esp32_marauder/configs.h
+          sed -i 's/^  #define MARAUDER_V7/  \/\/#define MARAUDER_V7/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_KIT/  \/\/#define MARAUDER_KIT/' esp32_marauder/configs.h
           sed -i 's/^  #define GENERIC_ESP32/  \/\/#define GENERIC_ESP32/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_FLIPPER/  \/\/#define MARAUDER_FLIPPER/' esp32_marauder/configs.h
@@ -354,6 +424,8 @@ jobs:
           sketch-names: esp32_marauder.ino
           arduino-board-fqbn: esp32:esp32:d32:PartitionScheme=min_spiffs
           extra-arduino-cli-args: "--warnings none"
+          arduino-platform: esp32:esp32@2.0.11
+          platform-url: https://github.com/espressif/arduino-esp32/releases/download/2.0.11/package_esp32_dev_index.json
           
       - name: Rename Marauder Mini bin
         run: |
@@ -366,6 +438,7 @@ jobs:
           sed -i 's/^  #define MARAUDER_V4/  \/\/#define MARAUDER_V4/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_V6/  \/\/#define MARAUDER_V6/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_V6_1/  \/\/#define MARAUDER_V6_1/' esp32_marauder/configs.h
+          sed -i 's/^  #define MARAUDER_V7/  \/\/#define MARAUDER_V7/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_KIT/  \/\/#define MARAUDER_KIT/' esp32_marauder/configs.h
           sed -i 's/^  #define GENERIC_ESP32/  \/\/#define GENERIC_ESP32/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_FLIPPER/  \/\/#define MARAUDER_FLIPPER/' esp32_marauder/configs.h
@@ -378,6 +451,8 @@ jobs:
           sketch-names: esp32_marauder.ino
           arduino-board-fqbn: esp32:esp32:d32:PartitionScheme=min_spiffs
           extra-arduino-cli-args: "--warnings none"
+          arduino-platform: esp32:esp32@2.0.11
+          platform-url: https://github.com/espressif/arduino-esp32/releases/download/2.0.11/package_esp32_dev_index.json
           
       - name: Rename Marauder ESP32 LDDB bin
         run: |
@@ -390,6 +465,7 @@ jobs:
           sed -i 's/^  #define MARAUDER_V4/  \/\/#define MARAUDER_V4/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_V6/  \/\/#define MARAUDER_V6/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_V6_1/  \/\/#define MARAUDER_V6_1/' esp32_marauder/configs.h
+          sed -i 's/^  #define MARAUDER_V7/  \/\/#define MARAUDER_V7/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_KIT/  \/\/#define MARAUDER_KIT/' esp32_marauder/configs.h
           sed -i 's/^  #define GENERIC_ESP32/  \/\/#define GENERIC_ESP32/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_FLIPPER/  \/\/#define MARAUDER_FLIPPER/' esp32_marauder/configs.h
@@ -402,6 +478,8 @@ jobs:
           sketch-names: esp32_marauder.ino
           arduino-board-fqbn: esp32:esp32:d32:PartitionScheme=min_spiffs
           extra-arduino-cli-args: "--warnings none"
+          arduino-platform: esp32:esp32@2.0.11
+          platform-url: https://github.com/espressif/arduino-esp32/releases/download/2.0.11/package_esp32_dev_index.json
           
       - name: Rename Marauder for Marauder Dev Board Pro
         run: |
@@ -418,6 +496,7 @@ jobs:
           sed -i 's/^  #define MARAUDER_V4/  \/\/#define MARAUDER_V4/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_V6/  \/\/#define MARAUDER_V6/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_V6_1/  \/\/#define MARAUDER_V6_1/' esp32_marauder/configs.h
+          sed -i 's/^  #define MARAUDER_V7/  \/\/#define MARAUDER_V7/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_KIT/  \/\/#define MARAUDER_KIT/' esp32_marauder/configs.h
           sed -i 's/^  #define GENERIC_ESP32/  \/\/#define GENERIC_ESP32/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_FLIPPER/  \/\/#define MARAUDER_FLIPPER/' esp32_marauder/configs.h
@@ -431,6 +510,8 @@ jobs:
           sketch-names: esp32_marauder.ino
           arduino-board-fqbn: esp32:esp32:m5stick-c:PartitionScheme=min_spiffs
           extra-arduino-cli-args: "--warnings none"
+          arduino-platform: esp32:esp32@2.0.11
+          platform-url: https://github.com/espressif/arduino-esp32/releases/download/2.0.11/package_esp32_dev_index.json
           
       - name: Rename Marauder M5StickC bin
         run: |
@@ -448,6 +529,7 @@ jobs:
           sed -i 's/^  #define MARAUDER_V4/  \/\/#define MARAUDER_V4/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_V6/  \/\/#define MARAUDER_V6/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_V6_1/  \/\/#define MARAUDER_V6_1/' esp32_marauder/configs.h
+          sed -i 's/^  #define MARAUDER_V7/  \/\/#define MARAUDER_V7/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_KIT/  \/\/#define MARAUDER_KIT/' esp32_marauder/configs.h
           sed -i 's/^  #define GENERIC_ESP32/  \/\/#define GENERIC_ESP32/' esp32_marauder/configs.h
           sed -i 's/^  #define MARAUDER_FLIPPER/  \/\/#define MARAUDER_FLIPPER/' esp32_marauder/configs.h
@@ -461,10 +543,46 @@ jobs:
           sketch-names: esp32_marauder.ino
           arduino-board-fqbn: esp32:esp32:esp32s2:PartitionScheme=min_spiffs,FlashSize=4M,PSRAM=enabled
           extra-arduino-cli-args: "--warnings none"
+          arduino-platform: esp32:esp32@2.0.11
+          platform-url: https://github.com/espressif/arduino-esp32/releases/download/2.0.11/package_esp32_dev_index.json
           
       - name: Rename Marauder Marauder Rev Feather
         run: |
           mv ./esp32_marauder/build/esp32.esp32.esp32s2/esp32_marauder.ino.bin ./esp32_marauder/build/esp32.esp32.esp32s2/esp32_marauder.rev_feather.bin
+          
+      - name: Configure TFT_eSPI and configs.h for Marauder v7
+        run: |
+          pwd
+          find /home/runner/ -name "*TFT_eSPI*"          
+          sed -i 's/^#include <User_Setup_marauder_rev_feather.h>/\/\/#include <User_Setup_marauder_rev_feather.h>/' /home/runner/Arduino/libraries/CustomTFT_eSPI/User_Setup_Select.h
+          sed -i 's/^#include <User_Setup_marauder_mini.h>/\/\/#include <User_Setup_marauder_mini.h>/' /home/runner/Arduino/libraries/CustomTFT_eSPI/User_Setup_Select.h
+          sed -i 's/^#include <User_Setup_marauder_m5stickc.h>/\/\/#include <User_Setup_marauder_m5stickc.h>/' /home/runner/Arduino/libraries/CustomTFT_eSPI/User_Setup_Select.h
+          sed -i 's/^\/\/#include <User_Setup_dual_nrf24.h>/#include <User_Setup_dual_nrf24.h>/' /home/runner/Arduino/libraries/CustomTFT_eSPI/User_Setup_Select.h
+          sed -i 's/^  #define MARAUDER_REV_FEATHER/  \/\/#define MARAUDER_REV_FEATHER/' esp32_marauder/configs.h
+          sed -i 's/^  #define MARAUDER_MINI/  \/\/#define MARAUDER_MINI/' esp32_marauder/configs.h
+          sed -i 's/^  #define MARAUDER_V4/  \/\/#define MARAUDER_V4/' esp32_marauder/configs.h
+          sed -i 's/^  #define MARAUDER_V6/  \/\/#define MARAUDER_V6/' esp32_marauder/configs.h
+          sed -i 's/^  #define MARAUDER_V6_1/  \/\/#define MARAUDER_V6_1/' esp32_marauder/configs.h
+          sed -i 's/^  \/\/#define MARAUDER_V7/  #define MARAUDER_V7/' esp32_marauder/configs.h
+          sed -i 's/^  #define MARAUDER_KIT/  \/\/#define MARAUDER_KIT/' esp32_marauder/configs.h
+          sed -i 's/^  #define GENERIC_ESP32/  \/\/#define GENERIC_ESP32/' esp32_marauder/configs.h
+          sed -i 's/^  #define MARAUDER_FLIPPER/  \/\/#define MARAUDER_FLIPPER/' esp32_marauder/configs.h
+          sed -i 's/^  #define ESP32_LDDB/  \/\/#define ESP32_LDDB/' esp32_marauder/configs.h
+          sed -i 's/^  #define MARAUDER_DEV_BOARD_PRO/  \/\/#define MARAUDER_DEV_BOARD_PRO/' esp32_marauder/configs.h
+          sed -i 's/^  #define MARAUDER_M5STICKC/  \/\/#define MARAUDER_M5STICKC/' esp32_marauder/configs.h
+          
+      - name: Build Marauder for Marauder v7
+        uses: ArminJo/arduino-test-compile@v3.2.1
+        with:
+          sketch-names: esp32_marauder.ino
+          arduino-board-fqbn: esp32:esp32:d32:PartitionScheme=min_spiffs
+          extra-arduino-cli-args: "--warnings none"
+          arduino-platform: esp32:esp32@2.0.11
+          platform-url: https://github.com/espressif/arduino-esp32/releases/download/2.0.11/package_esp32_dev_index.json
+          
+      - name: Rename Marauder Marauder v7
+        run: |
+          mv ./esp32_marauder/build/esp32.esp32.d32/esp32_marauder.ino.bin ./esp32_marauder/build/esp32.esp32.d32/esp32_marauder.marauder_v7.bin
 
       - name: Display finished bins
         run: |
@@ -545,6 +663,13 @@ jobs:
         with:
           name: esp32_marauder.rev_feather.bin
           path: ./esp32_marauder/build/esp32.esp32.esp32s2/esp32_marauder.rev_feather.bin
+          retention-days: 5
+          
+      - name: 'Upload Marauder v7 Artifact'
+        uses: actions/upload-artifact@v3
+        with:
+          name: esp32_marauder.marauder_v7.bin
+          path: ./esp32_marauder/build/esp32.esp32.d32/esp32_marauder.marauder_v7.bin
           retention-days: 5
           
       - name: Create Release
@@ -688,5 +813,17 @@ jobs:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./esp32_marauder/build/esp32.esp32.esp32s2/esp32_marauder.rev_feather.bin
           asset_name: esp32_marauder.rev_feather.bin
+          asset_content_type: application/bin
+        if: github.event_name != 'pull_request'
+        
+      - name: Upload Marauder v7 Asset
+        id: upload-marauder-v7-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./esp32_marauder/build/esp32.esp32.d32/esp32_marauder.marauder_v7.bin
+          asset_name: esp32_marauder.marauder_v7.bin
           asset_content_type: application/bin
         if: github.event_name != 'pull_request'
